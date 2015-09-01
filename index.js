@@ -46,12 +46,13 @@ function generateCommonResourceHandler(entriesDef, moduleName) {
     },
   })
 
+  //console.log( config,`/${entriesDef.base}/` )
   var middleware = webpackMiddleware(webpack(config), {
     publicPath: `/${entriesDef.base}/`,
   })
 
-
   return function *resourceHandler(next) {
+    console.log('get ting resource', this.path)
     return yield middleware.call(this, next)
   }
 }
@@ -85,9 +86,6 @@ var themeModule = {
   assets : [],
   routes: {},
   reliers : {},
-  extend : function( module ){
-    this.reliers[module.name] = module
-  },
   extend: function (module) {
     /*entries
      {
@@ -141,7 +139,7 @@ var themeModule = {
 
 
     if( module.assets ){
-      if( !module.assets.map  ) console.log( module.assets)
+      if( !module.assets.map  ) console.log( "module.assets", module.assets)
       this.assets = this.assets.concat( module.assets.map(function( asset ){
         return _.defaults( asset, {
           base : module.name

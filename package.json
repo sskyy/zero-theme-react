@@ -26,5 +26,19 @@
     "style-loader": "^0.12.3",
     "url-loader": "^0.5.6",
     "webpack": "~1.10.3"
-  }
+  },
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sskyy/zero-theme-react.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sskyy/zero-theme-react/issues"
+  },
+  "homepage": "https://github.com/sskyy/zero-theme-react#readme"
 }
