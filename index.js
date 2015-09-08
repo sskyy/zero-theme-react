@@ -16,7 +16,7 @@ function readEntries(entriesDef) {
 
   //read dir
   var entries = {}
-  if( entriesDef.path ){
+  if (entriesDef.path) {
     fs.readdirSync(entriesDef.path).forEach(function (f) {
       if (!/^\./.test(f) && fs.statSync(path.join(entriesDef.path, f)).isDirectory()) {
         entries[f] = path.join(entriesDef.path, f, 'index.jsx')
@@ -28,7 +28,7 @@ function readEntries(entriesDef) {
   //read spec
   if (entriesDef.spec) {
     _.forEach(entriesDef.spec, function (def, entryName) {
-      if( def.path ) entries[entryName] = path.join(def.path, 'index.jsx')
+      if (def.path) entries[entryName] = path.join(def.path, 'index.jsx')
     })
   }
 
@@ -42,7 +42,7 @@ function generateCommonResourceHandler(entriesDef, moduleName) {
     entry: readEntries(entriesDef),
     resolve: {
       extensions: ['', '.js', '.jsx'],
-      root : path.join(__dirname,'../', moduleName)
+      root: path.join(__dirname, '../', moduleName)
     },
   })
 
@@ -62,11 +62,14 @@ function *pageHandler(entriesDef, entryName) {
 //TODO production 情况
 
   var entryDef = _.defaults(_.get(entriesDef, `spec.${entryName}`, {}), {
-    base : entriesDef.base,
+    base: entriesDef.base,
     name: entryName,
     container: entriesDef.container,
-    entry: require(path.join(entriesDef.path, entryName)),
   })
+
+  if( entryDef.serverRendering === true ){
+    entryDef.entry = require(path.join(entriesDef.path, entryName))
+  }
 
   //context 执行一次
   entryDef.context = _.result(entryDef, 'context', {})
@@ -74,18 +77,17 @@ function *pageHandler(entriesDef, entryName) {
 }
 
 
-
 /*
-exports
+ exports
  */
 
 var themeModule = {
   init: function (app) {
     this.log = app.logger.mlog.bind(this.logger, "request")
   },
-  assets : [],
+  assets: [],
   routes: {},
-  reliers : {},
+  reliers: {},
   extend: function (module) {
     /*entries
      {
@@ -114,49 +116,56 @@ var themeModule = {
     //root.log('handler', `/${module.entries.base}/${entryName}.js`)
 
 
-    if( module.entries ){
+    if (module.entries) {
       module.entries.base = module.entries.base || module.name
       //TODO 检测冲突
       //generator bind 之后变成了普通的Function，所以这里只能这样
 
       var that = this
-      var entries = readEntries( module.entries )
+      var entries = readEntries(module.entries)
 
+      console.log('generating entryies:', module.name, Object.keys( module.entries))
       var commonResourceHandler = generateCommonResourceHandler(module.entries, module.name)
 
-      _.forEach(entries, function( entriesPath, entryName ){
+      _.forEach(entries, function (entriesPath, entryName) {
         root.log(`/${module.entries.base}/${entryName}.html`)
 
-        that.routes[`/${module.entries.base}/${entryName}.html`] = function *(next) {
-          return yield pageHandler.call(this, module.entries,  entryName, next)
+        that.routes[`/${module.entries.base}/${entryName}.html`] ={
+          name : `${module.name}.${entryName}.entryHandler}`,
+          fn: function *(next) {
+            return yield pageHandler.call(this, module.entries, entryName, next)
+          }
         }
 
 
         root.log('handler', `/${module.entries.base}/${entryName}.js`)
-        that.routes[`/${module.entries.base}/${entryName}.js`] = commonResourceHandler
+        that.routes[`/${module.entries.base}/${entryName}.js`] = {
+          name : `${module.name}.${entryName}.scriptHandler}`,
+          fn : commonResourceHandler,
+        }
       })
     }
 
 
-    if( module.assets ){
-      if( !module.assets.map  ) console.log( "module.assets", module.assets)
-      this.assets = this.assets.concat( module.assets.map(function( asset ){
-        return _.defaults( asset, {
-          base : module.name
+    if (module.assets) {
+      if (!module.assets.map) console.log("module.assets", module.assets)
+      this.assets = this.assets.concat(module.assets.map(function (asset) {
+        return _.defaults(asset, {
+          base: module.name
         })
       }))
     }
 
   },
-  bootstrap : {
-    fn:function( app ){
+  bootstrap: {
+    fn: function (app) {
 
-    this.log('serving', this.assets)
-    this.assets.forEach(function( asset ){
-      app.use( serve(asset.path, {prefix:`/${asset.base}`}))
-    })
+      this.log('serving', this.assets)
+      this.assets.forEach(function (asset) {
+        app.use(serve(asset.path, {prefix: `/${asset.base}`}))
+      })
     },
-    before:['request']
+    before: ['request']
   }
 }
 
