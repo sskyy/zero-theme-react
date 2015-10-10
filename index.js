@@ -1,3 +1,4 @@
+require('node-jsx').install({extension: '.jsx'})
 var React = require('react')
 var path = require('path')
 var _ = require('lodash')
@@ -8,9 +9,13 @@ var fs = require('fs')
 var serve = require('./static');
 
 
-require('node-jsx').install({extension: '.jsx'})
+
 require.extensions['.css'] = _.noop
 require.extensions['.less'] = _.noop
+
+function isGenerator( obj ){
+  return obj && obj.constructor && obj.constructor.name === 'GeneratorFunction'
+}
 
 function readEntries(entriesDef) {
 
@@ -61,18 +66,25 @@ function generateCommonResourceHandler(entriesDef, moduleName) {
 function *pageHandler(entriesDef, entryName) {
 //TODO production 情况
 
-  var entryDef = _.defaults(_.get(entriesDef, `spec.${entryName}`, {}), {
+  var entryDef = _.clone( _.get(entriesDef, `spec.${entryName}`) || {})
+  _.defaults(entryDef, {
     base: entriesDef.base,
     name: entryName,
     container: entriesDef.container,
   })
 
-  if( entryDef.serverRendering === true ){
-    entryDef.entry = require(path.join(entriesDef.path, entryName))
-  }
+  //TODO
+  //if( entryDef.serverRendering === true ){
+  //  entryDef.entry = require(path.join(entriesDef.path, entryName))
+  //}
 
   //context 执行一次
-  entryDef.context = _.result(entryDef, 'context', {})
+  if( _.isFunction(entryDef.context )){
+    entryDef.context = entryDef.context.call( this )
+  }else if( isGenerator( entriesDef.context )){
+    entryDef.context = yield entryDef.context.call( this )
+  }
+
   this.body = React.renderToStaticMarkup(React.createElement(entryDef.container, entryDef))
 }
 
@@ -124,7 +136,7 @@ var themeModule = {
       var that = this
       var entries = readEntries(module.entries)
 
-      console.log('generating entryies:', module.name, Object.keys( module.entries))
+      console.log('generating entries:', module.name, Object.keys( module.entries))
       var commonResourceHandler = generateCommonResourceHandler(module.entries, module.name)
 
       _.forEach(entries, function (entriesPath, entryName) {
